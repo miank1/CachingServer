@@ -4,6 +4,7 @@ import (
 	"cache-server/cache"
 	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 var c = cache.NewCache()
@@ -20,8 +21,18 @@ func main() {
 func setHandler(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Query().Get("key")
 	value := r.URL.Query().Get("value")
+	ttl := r.URL.Query().Get("ttl")
 
-	c.Set(key, value)
+	ttlSeconds := 60 // default
+
+	if ttl != "" {
+		parsed, err := strconv.Atoi(ttl)
+		if err == nil {
+			ttlSeconds = parsed
+		}
+	}
+
+	c.Set(key, value, ttlSeconds)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("OK"))
 }
