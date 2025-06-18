@@ -11,8 +11,16 @@ type item struct {
 }
 
 type Cache struct {
-	store map[string]item
-	mu    sync.RWMutex
+	store  map[string]item
+	mu     sync.RWMutex
+	hits   int
+	misses int
+}
+
+type Stats struct {
+	Items  int `json:"items"`
+	Hits   int `json:"hits"`
+	Misses int `json:"misses"`
 }
 
 func NewCache() *Cache {
@@ -40,8 +48,16 @@ func (c *Cache) Get(key string) (string, bool) {
 
 	it, found := c.store[key]
 	if !found || time.Now().UnixNano() > it.expiration {
+		c.misses++
 		return "", false
 	}
+
+	if time.Now().UnixNano() > it.expiration {
+		c.misses++
+		return "", false
+	}
+
+	c.hits++
 	return it.value, true
 }
 
@@ -68,5 +84,16 @@ func (c *Cache) cleanupExpiredItems() {
 
 		c.mu.Unlock()
 
+	}
+}
+
+func (c *Cache) Stats() Stats {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return Stats{
+		Items:  len(c.store),
+		Hits:   c.hits,
+		Misses: c.misses,
 	}
 }
